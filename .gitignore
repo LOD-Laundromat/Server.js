@@ -3,3 +3,5 @@ data
 config.json
 *.log
 *.hdt.index
+ll.config.json
+generatedConfig.json
