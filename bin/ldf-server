@@ -10,6 +10,7 @@ var _ = require('lodash'),
     IndexDatasource = require('../lib/datasources/IndexDatasource'),
     ViewCollection = require('../lib/views/ViewCollection.js');
 
+
 // Parse arguments
 var args = process.argv.slice(2);
 if (args.length < 1 || args.length > 3 || /^--?h(elp)?$/.test(args[0])) {
@@ -21,7 +22,6 @@ var configDefaults = JSON.parse(fs.readFileSync(path.join(__dirname, '../config/
     port = parseInt(args[1], 10) || config.port,
     workers = parseInt(args[2], 10) || config.workers,
     constructors = {};
-
 // Start up a cluster master
 if (cluster.isMaster) {
   // Create workers
@@ -107,6 +107,7 @@ else {
         datasources[datasourcePath] = datasourceConfig;
         // Set up blank-node-to-IRI translation, with dereferenceable URLs when possible
         datasourceConfig.settings = _.defaults(datasourceConfig.settings || {}, config);
+	delete datasourceConfig.settings.datasources;
         if (!datasourceConfig.settings.blankNodePrefix) {
           datasourceConfig.settings.blankNodePrefix = blankNodePrefix + datasourcePath + '/';
           if (blankNodePath)
@@ -114,6 +115,8 @@ else {
         }
         // Create the data source
         var datasource = instantiate(datasourceConfig, '../lib/datasources/');
+	//so we don't get max event listener (mem leak) warnings
+	datasource.setMaxListeners(Infinity);
         datasource.on('error', datasourceError);
         datasourceConfig.datasource = datasource;
         datasourceConfig.url = baseURLRoot + '/' + datasourcePath + '#dataset';
@@ -164,6 +167,7 @@ else {
       pending = _.size(datasources);
   _.each(datasources, function (settings) {
     var ready = _.once(startWhenReady);
+settings.datasource.setMaxListeners(Infinity);
     settings.datasource.once('initialized', ready);
     settings.datasource.once('error', ready);
   });
