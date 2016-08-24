@@ -1,4 +1,7 @@
+/*! @license MIT ©2013-2016 Ruben Verborgh - Ghent University / iMinds */
 var Datasource = require('../../lib/datasources/Datasource');
+
+var EventEmitter = require('events');
 
 describe('Datasource', function () {
   describe('The Datasource module', function () {
@@ -12,6 +15,14 @@ describe('Datasource', function () {
 
     it('should create new Datasource objects', function () {
       Datasource().should.be.an.instanceof(Datasource);
+    });
+
+    it('should be an EventEmitter constructor', function () {
+      new Datasource().should.be.an.instanceof(EventEmitter);
+    });
+
+    it('should create new EventEmitter objects', function () {
+      Datasource().should.be.an.instanceof(EventEmitter);
     });
   });
 
@@ -56,6 +67,129 @@ describe('Datasource', function () {
     });
   });
 
+  describe('A Datasource instance with an initializer', function () {
+    var datasource, initializedListener, errorListener;
+    before(function () {
+      datasource = new Datasource();
+      datasource._initialize = sinon.stub();
+      Object.defineProperty(datasource, 'supportedFeatures', {
+        value: { all: true },
+      });
+      datasource.on('initialized', initializedListener = sinon.stub());
+      datasource.on('error', errorListener = sinon.stub());
+    });
+
+    describe('after construction', function () {
+      it('should have called the initializer', function () {
+        datasource._initialize.should.have.been.calledOnce;
+      });
+
+      it('should not be initialized', function () {
+        datasource.initialized.should.be.false;
+      });
+
+      it('should not support any query', function () {
+        datasource.supportsQuery({}).should.be.false;
+      });
+
+      it('should error when trying to query', function (done) {
+        datasource.select({}, function (error) {
+          error.should.have.property('message', 'The datasource is not initialized yet');
+          done();
+        });
+      });
+    });
+
+    describe('after the initializer calls the callback', function () {
+      before(function () {
+        datasource._initialize.getCall(0).args[0]();
+      });
+
+      it('should be initialized', function () {
+        datasource.initialized.should.be.true;
+      });
+
+      it('should have called "initialized" listeners', function () {
+        initializedListener.should.have.been.calledOnce;
+      });
+
+      it('should not have called "error" listeners', function () {
+        errorListener.should.not.have.been.called;
+      });
+
+      it('should support queries', function () {
+        datasource.supportsQuery({}).should.be.true;
+      });
+
+      it('should allow querying', function (done) {
+        datasource.select({}, function (error) {
+          error.should.have.property('message', '_executeQuery has not been implemented');
+          done();
+        });
+      });
+    });
+  });
+
+  describe('A Datasource instance with an initializer that errors synchronously', function () {
+    var datasource, initializedListener, errorListener, error;
+    before(function () {
+      datasource = new Datasource();
+      error = new Error('initializer error');
+      datasource._initialize = sinon.stub().throws(error);
+      datasource.on('initialized', initializedListener = sinon.stub());
+      datasource.on('error', errorListener = sinon.stub());
+    });
+
+    describe('after the initializer calls the callback', function () {
+      it('should have called the initializer', function () {
+        datasource._initialize.should.have.been.calledOnce;
+      });
+
+      it('should not be initialized', function () {
+        datasource.initialized.should.be.false;
+      });
+
+      it('should not have called "initialized" listeners', function () {
+        initializedListener.should.not.have.been.called;
+      });
+
+      it('should not have called "error" listeners', function () {
+        errorListener.should.have.been.calledOnce;
+        errorListener.should.have.been.calledWith(error);
+      });
+    });
+  });
+
+  describe('A Datasource instance with an initializer that errors asynchronously', function () {
+    var datasource, initializedListener, errorListener, error;
+    before(function () {
+      datasource = new Datasource();
+      error = new Error('initializer error');
+      datasource._initialize = sinon.stub().callsArgWith(0, error);
+      datasource.on('initialized', initializedListener = sinon.stub());
+      datasource.on('error', errorListener = sinon.stub());
+    });
+
+    describe('after the initializer calls the callback', function () {
+      it('should have called the initializer', function () {
+        datasource._initialize.should.have.been.calledOnce;
+      });
+
+      it('should not be initialized', function () {
+        datasource.initialized.should.be.false;
+      });
+
+      it('should not have called "initialized" listeners', function () {
+        initializedListener.should.not.have.been.called;
+      });
+
+      it('should not have called "error" listeners', function () {
+        errorListener.should.have.been.calledOnce;
+        errorListener.should.have.been.calledWith(error);
+      });
+    });
+  });
+
   describe('A derived Datasource instance', function () {
     var datasource = new Datasource();
     Object.defineProperty(datasource, 'supportedFeatures', {
@@ -79,10 +213,10 @@ describe('Datasource', function () {
     });
 
     it('should not support queries with unsupported features', function () {
-      datasource.supportsQuery({ features: { c: true} }).should.be.false;
-      datasource.supportsQuery({ features: { a: true, c: true} }).should.be.false;
-      datasource.supportsQuery({ features: { b: true, c: true} }).should.be.false;
-      datasource.supportsQuery({ features: { a: true, b: true, c: true} }).should.be.false;
+      datasource.supportsQuery({ features: { c: true } }).should.be.false;
+      datasource.supportsQuery({ features: { a: true, c: true } }).should.be.false;
+      datasource.supportsQuery({ features: { b: true, c: true } }).should.be.false;
+      datasource.supportsQuery({ features: { a: true, b: true, c: true } }).should.be.false;
     });
 
     it('should not attach an error listener on select if none was passed', function () {

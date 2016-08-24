@@ -1,3 +1,4 @@
+/*! @license MIT ©2015-2016 Ruben Verborgh - Ghent University / iMinds */
 var PageRouter = require('../../lib/routers/PageRouter');
 
 describe('PageRouter', function () {
@@ -152,7 +153,7 @@ describe('PageRouter', function () {
   });
 
   describe('A PageRouter instance with an invalid page size', function () {
-    var router = new PageRouter({ pageSize: -1 });
+    var router = new PageRouter({ pageSize: -1 });
 
     describe('extractUrlParams', function () {
       describe('with an existing query', function () {
